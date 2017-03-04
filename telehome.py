@@ -19,7 +19,9 @@ def handle(msg):
     chat_id = msg['chat']['id']
 
     if chat_id not in telegram_chat_whitelist:
+        print('Received communication from uknown chat ID: ' + str(chat_id))
         bot.sendMessage(chat_id, 'Sorry, my parents told me not to talk to strangers')
+        return
 
     command = msg['text']
 
@@ -66,14 +68,21 @@ def _read_config():
 
 config = _read_config()
 hass_ip = config['homeAssistant']['ip']
+hass_pass = config['homeAssistant']['password']
+hass_port = config['homeAssistant']['port']
+hass_ssl = config.getboolean('homeAssistant', 'ssl')
+
+api = remote.API(hass_ip, hass_pass, port = hass_port, use_ssl = hass_ssl)
+status = remote.validate_api(api)
+if status.value != 'ok':
+    pprint(status)
+    exit();
+
 telegram_bot_id = config['telegram']['botKey']
 telegram_chat_whitelist = [int(config['telegram']['chatIdWhitelist'])]
 
 print('Configured with hass_ip=%s bot_id=%s allowed_chat=%s' % (hass_ip, telegram_bot_id, telegram_chat_whitelist))
 bot = telepot.Bot(telegram_bot_id)
-api = remote.API(hass_ip, hass_pass)
-status = remote.validate_api(api)
-pprint(status)
 if status != remote.APIStatus.OK:
     print('Failed to connect to home assistant')
     exit()
@@ -83,3 +92,4 @@ bot.message_loop(handle)
 while 1:
     time.sleep(10)
 print ('finish loop')
+
